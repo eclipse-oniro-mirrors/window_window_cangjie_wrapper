@@ -24,6 +24,7 @@ ohos_cj_library("ohos.window") {
   ]
 
   cj_external_deps = [
+    "ability_cangjie_api:ohos.app.ability",
     "cangjie_api:ohos.ffi",
     "cangjie_api:ohos.labels",
     "arkui_cangjie_api:ohos.base",
@@ -31,6 +32,9 @@ ohos_cj_library("ohos.window") {
     "multimedia_cangjie_api:ohos.multimedia.image",
   ]
 
-  external_deps = [ "window_manager:cj_window_ffi" ]
+  external_deps = [ 
+    "ability_runtime:abilitykit_native",
+    "window_manager:cj_window_ffi"
+  ]
   lib_name = "window"
 }

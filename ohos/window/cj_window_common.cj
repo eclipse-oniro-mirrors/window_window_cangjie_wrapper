@@ -16,6 +16,7 @@
 package ohos.window
 
 internal import ohos.labels.*
+import ohos.app.ability.BaseContext
 
 @!APILevel[
     12,
@@ -177,7 +178,7 @@ public class Configuration {
         stagemodelonly: true,
         syscap: "SystemCapability.WindowManager.WindowManager.Core"
     ]
-    public let ctx: StageContext
+    public let ctx: BaseContext
     @!APILevel[
         12,
         stagemodelonly: true,
@@ -199,7 +200,7 @@ public class Configuration {
     public init(
         name: String,
         windowType: WindowType,
-        ctx: StageContext,
+        ctx: BaseContext,
         displayId!: Int64 = -1,
         parentId!: Int64 = -1
     ) {

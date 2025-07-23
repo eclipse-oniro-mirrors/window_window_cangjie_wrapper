@@ -17,6 +17,7 @@ package ohos.window
 
 internal import std.collection.*
 internal import std.sync.*
+import ohos.app.ability.BaseContext
 internal import ohos.ffi.*
 internal import ohos.multimedia.image.*
 
@@ -134,6 +135,8 @@ foreign {
     func FfiOHOSOnCallback(id: Int64, callbackId: Int64, callbackType: CString): Int32
 
     func FfiOHOSOffCallback(id: Int64, callbackId: Int64, callbackType: CString): Int32
+
+    func FFIGetContext(id: Int64): CPointer<Unit>
 }
 
 let registerMutex = Mutex()
@@ -154,6 +157,9 @@ public func findWindow(name: String): Window {
     }
 }
 
+/**
+ * @throws { IllegalArgumentException } - The context type is not supported. Only support UIAbilityContext.
+ */
 @!APILevel[
     12,
     stagemodelonly: true,
@@ -161,11 +167,17 @@ public func findWindow(name: String): Window {
 ]
 public func createWindow(config: Configuration): Window {
     unsafe {
+        let stageContext = unsafe {
+            FFIGetContext(config.ctx.getID())
+        }
+        if (stageContext.isNull()) {
+            throw IllegalArgumentException("only UIAbilityContext is supported")
+        }
         if (config.name.isEmpty()) {
             checkRet(401, "[Window] createWindow: ")
         }
         let cname = LibC.mallocCString(config.name)
-        let ret = FfiOHOSCreateWindow(cname, config.windowType.getValue(), config.ctx, config.displayId, config.parentId
+        let ret = FfiOHOSCreateWindow(cname, config.windowType.getValue(), stageContext, config.displayId, config.parentId
         )
         LibC.free(cname)
         checkRet(ret.code, "[Window] createWindow: ")
@@ -173,14 +185,23 @@ public func createWindow(config: Configuration): Window {
     }
 }
 
+/**
+ * @throws { IllegalArgumentException } - The context type is not supported. Only support UIAbilityContext.
+ */
 @!APILevel[
     12,
     stagemodelonly: true,
     syscap: "SystemCapability.WindowManager.WindowManager.Core"
 ]
-public func getLastWindow(ctx: StageContext): Window {
+public func getLastWindow(ctx: BaseContext): Window {
     unsafe {
-        let ret = FfiOHOSGetLastWindow(ctx)
+        let stageContext = unsafe {
+            FFIGetContext(ctx.getID())
+        }
+        if (stageContext.isNull()) {
+            throw IllegalArgumentException("only UIAbilityContext is supported")
+        }
+        let ret = FfiOHOSGetLastWindow(stageContext)
         checkRet(ret.code, "[Window] getLastWindow: ")
         getOrCreate(Window.instanceMap, ret.data, {id: Int64 => Window(id)})
     }
