@@ -48,8 +48,13 @@ foreign {
 
 let stageRegisterMutex = Mutex()
 
+/**
+* WindowStage
+*
+* @relation export interface WindowStage
+*/
 @!APILevel[
-    12,
+    21,
     stagemodelonly: true,
     syscap: "SystemCapability.WindowManager.WindowManager.Core"
 ]
@@ -66,8 +71,15 @@ public class WindowStage <: RemoteDataLite {
         releaseFFIData(myDataId)
     }
 
+    /**
+    * Obtains the main window of this window stage.
+    *
+    * @returns { Window } the main window.
+    * @throws { BusinessException } 1300002 - This window state is abnormal.
+    * @relation getMainWindow(): Promise<Window>
+    */
     @!APILevel[
-        12,
+        21,
         stagemodelonly: true,
         syscap: "SystemCapability.WindowManager.WindowManager.Core"
     ]
@@ -79,8 +91,16 @@ public class WindowStage <: RemoteDataLite {
         }
     }
 
+    /**
+    * Creates a child window for this window stage.
+    *
+    * @param { String } name - Name of the child window.
+    * @returns { Window } the child window.
+    * @throws { BusinessException } 1300002 - This window state is abnormal.
+    * @relation createSubWindow(name: string): Promise<Window>
+    */
     @!APILevel[
-        12,
+        21,
         stagemodelonly: true,
         syscap: "SystemCapability.WindowManager.WindowManager.Core"
     ]
@@ -94,8 +114,15 @@ public class WindowStage <: RemoteDataLite {
         }
     }
 
+    /**
+    * Obtains all the child windows of this window stage.
+    *
+    * @returns { Array<Window> } all the child windows.
+    * @throws { BusinessException } 1300002 - This window state is abnormal.
+    * @relation getSubWindow(): Promise<Array<Window>>
+    */
     @!APILevel[
-        12,
+        21,
         stagemodelonly: true,
         syscap: "SystemCapability.WindowManager.WindowManager.Core"
     ]
@@ -112,8 +139,15 @@ public class WindowStage <: RemoteDataLite {
         }
     }
 
+    /**
+    * Loads content from a page to this window. You are advised to call this API during UIAbility startup.
+    * If called multiple times, this API will destroy the existing page content (UIContent) before loading the new content. Exercise caution when using it.
+    *
+    * @param { String } path - Path of the page to which the content will be loaded
+    * @relation loadContent(path: string, storage?: LocalStorage): Promise<void>
+    */
     @!APILevel[
-        12,
+        21,
         stagemodelonly: true,
         syscap: "SystemCapability.WindowManager.WindowManager.Core"
     ]
@@ -123,101 +157,5 @@ public class WindowStage <: RemoteDataLite {
                 FfiOHOSLoadContent(getID(), cpath.value)
             }
         }
-    }
-
-    /**
-     * @brief  loadContentByName(name: string, storage?: LocalStorage): Promise<void>
-     */
-    func loadContentByName(name: String): Unit {
-        unsafe {
-            try (cname = LibC.mallocCString(name).asResource()) {
-                FfiOHOSLoadContentByName(getID(), cname.value)
-            }
-        }
-    }
-
-    /**
-     * @brief  disableWindowDecor(): void
-     */
-    func disableWindowDecor(): Unit {
-        let ret = unsafe { FfiOHOSDisableWindowDecor(getID()) }
-        checkRet(ret, "[WindowStage] disableWindowDecor: ")
-    }
-
-    /**
-     * @brief  setShowOnLockScreen(showOnLockScreen: boolean): void
-     */
-    func setShowOnLockScreen(showOnLockScreen: Bool): Unit {
-        let ret = unsafe { FfiOHOSSetShowOnLockScreen(getID(), showOnLockScreen) }
-        checkRet(ret, "[WindowStage] setShowOnLockScreen: ")
-    }
-
-    func onWindowStageEvent(callbackType: String, callback: Callback1Argument<WindowStageEventType>): Unit {
-        synchronized(stageRegisterMutex) {
-            var callbackEntryView = callbackMaps.entryView(callbackType)
-            if (callbackEntryView.value.isNone()) {
-                return
-            }
-            var callbackList = callbackEntryView.value.getOrThrow()
-            if (findCallbackObject(callbackList, callback)) {
-                WindowLibLog.info("[WindowStage] The callback object already exists.")
-                return
-            }
-            unsafe {
-                let wrapper = {
-                    data: CPointer<Unit> =>
-                    let val = CPointer<Int32>(data).read()
-                    callback.invoke(WindowStageEventType.parse(val))
-                }
-                let registerCall = Callback1Param<CPointer<Unit>, Unit>(wrapper)
-                let ret = FfiOHOSStageOn(getID(), registerCall.getID())
-                checkRet(ret, "[WindowStage] Register ${callbackType.toString()} failed: ")
-                callbackList.add((callback, registerCall.getID()))
-            }
-        }
-    }
-
-    func offWindowStage(key: String, callback: ?Callback1Argument<WindowStageEventType>): Unit {
-        synchronized(registerMutex) {
-            var callbackEntryView = callbackMaps.entryView(key)
-            if (callbackEntryView.value.isNone()) {
-                WindowLibLog.error("[WindowStage] Invalid param.")
-                return
-            }
-            var callbackList = callbackEntryView.value.getOrThrow()
-            if (callback.isNone()) { // clear all callback
-                unsafe {
-                    let ret = FfiOHOSStageOff(getID(), -1)
-                    checkRet(ret, "[WindowStage] Unregister ${key.toString()} failed: ")
-                }
-                callbackList.clear()
-                return;
-            }
-            var callbackId: Option<Int64> = None
-            for (idx in 0..callbackList.size) {
-                if (refEq(callback.getOrThrow(), callbackList[idx][0])) {
-                    callbackId = callbackList[idx][1]
-                    callbackList.remove(idx..idx + 1)
-                    break
-                }
-            }
-            if (callbackId.isNone()) {
-                WindowLibLog.info("[WindowStage] The callback object not exists.")
-                return
-            }
-            unsafe {
-                let ret = FfiOHOSStageOff(getID(), callbackId.getOrThrow())
-                checkRet(ret, "[WindowStage] Unregister ${key.toString()} failed: ")
-            }
-        }
-    }
-
-    func findCallbackObject(list: ArrayList<(CallbackObject, Int64)>, callback: CallbackObject): Bool {
-        for (item in list) {
-            if (refEq(callback, item[0])) {
-                return true
-            }
-        }
-        false
     }
 }
